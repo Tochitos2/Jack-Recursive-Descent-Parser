@@ -32,29 +32,33 @@ public class Parser {
         lex.advance();
 
         // Check first token is the keyword 'class'.
-        ValidateType(Token.KEYWORD);
-        ValidateKeyWord(Keyword.CLASS);
+        validateTokenType(new Token[]{ Token.KEYWORD });
+        validateKeyWord(new Keyword[]{ Keyword.CLASS });
         lex.advance();
 
         // Check for class identifier.
-        ValidateType(Token.IDENTIFIER);
+        validateTokenType(new Token[]{ Token.IDENTIFIER });
+        lex.advance();
+
+        // Check for opening bracket
+        validateTokenType(new Token[]{ Token.SYMBOL });
+        validateSymbol(new char[]{ '{' });
         lex.advance();
 
         // Parse 0 or more class variable declarations.
         while(isClassVarDec()) {
             parseClassVarDec();
+            lex.advance();
         }
 
         //TODO: Parse 0 or more subroutine declarations...
-
-        // Check for opening bracket
-        ValidateType(Token.SYMBOL);
-        ValidateSymbol('{');
-        lex.advance();
+//        while(isSubroutineDec()) {
+//            parseSubroutineDec();
+//        }
 
         // Check for closing bracket
-        ValidateType(Token.SYMBOL);
-        ValidateSymbol('}');
+        validateTokenType(new Token[]{ Token.SYMBOL });
+        validateSymbol(new char[]{ '}' });
     }
 
     /**
@@ -71,8 +75,28 @@ public class Parser {
      * @throws ParsingFailure on failure.
      */
     public void parseClassVarDec() {
+        validateTokenType(new Token[]{ Token.KEYWORD });
+        validateKeyWord(new Keyword[]{ Keyword.FIELD, Keyword.STATIC });
+        lex.advance();
 
+        // Parse data type.
+        parseType();
+        lex.advance();
+
+        // TODO: replace with call to parseVarList().
+        validateTokenType(new Token[]{ Token.IDENTIFIER });
+        lex.advance();
+
+        // Parse ending semicolon.
+        validateTokenType(new Token[]{ Token.SYMBOL });
+        validateSymbol(new char[] { ';' });
     }
+
+
+//    public boolean isSubroutineDec() {
+//        return lex.getTokenType() == Token.KEYWORD &&
+//                (lex.getKeyword() == Keyword.VOID || lex.getKeyword() == Keyword.Ty);
+//    }
     
     /**
      * A ParsingFailure exception is thrown on any form of
@@ -83,16 +107,36 @@ public class Parser {
 
     }
 
-    public void ValidateType(Token expectedType) {
-        if(lex.getTokenType() != expectedType) throw new ParsingFailure();
+    /**
+     *  A type must be either a keyword (int, char, boolean) or and identifier.
+     */
+    public void parseType() {
+        validateTokenType(new Token[]{ Token.KEYWORD, Token.IDENTIFIER });
+
+        if(lex.getTokenType() == Token.KEYWORD) validateKeyWord(new Keyword[]{Keyword.INT, Keyword.CHAR, Keyword.BOOLEAN});
     }
 
-    public void ValidateKeyWord(Keyword keyword) {
-        if(lex.getKeyword() != keyword) throw new ParsingFailure();
+
+    public void validateTokenType(Token[] validTypes) {
+        for(Token token: validTypes) {
+            if(lex.getTokenType() == token) return;
+        }
+        throw new ParsingFailure();
     }
 
-    public void ValidateSymbol(char symbol){
-        if(lex.getSymbol() != symbol) throw new ParsingFailure();
+    public void validateKeyWord(Keyword[] validKeywords) {
+        for(Keyword keyword: validKeywords) {
+            if(lex.getKeyword() == keyword) return;
+        }
+        throw new ParsingFailure();
     }
+
+    public void validateSymbol(char[] validSymbols){
+        for(char c: validSymbols) {
+            if(lex.getSymbol() == c) return;
+        }
+        throw new ParsingFailure();
+    }
+
 
 }
