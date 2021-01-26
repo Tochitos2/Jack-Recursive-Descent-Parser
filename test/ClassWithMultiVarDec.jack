@@ -1,4 +1,4 @@
 class Example {
-    static boolean i;
+    static boolean i, f, x;
     field int b;
 }

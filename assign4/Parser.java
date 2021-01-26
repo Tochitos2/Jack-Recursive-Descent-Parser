@@ -48,7 +48,6 @@ public class Parser {
         // Parse 0 or more class variable declarations.
         while(isClassVarDec()) {
             parseClassVarDec();
-            lex.advance();
         }
 
         //TODO: Parse 0 or more subroutine declarations...
@@ -81,15 +80,29 @@ public class Parser {
 
         // Parse data type.
         parseType();
-        lex.advance();
 
-        // TODO: replace with call to parseVarList().
-        validateTokenType(new Token[]{ Token.IDENTIFIER });
-        lex.advance();
+        // parse variable declaration list.
+        parseVarList();
 
         // Parse ending semicolon.
         validateTokenType(new Token[]{ Token.SYMBOL });
         validateSymbol(new char[] { ';' });
+
+        lex.advance();
+    }
+
+    /**
+     * varList ::= IDENTIFIER ( ',' varList ) ?
+     */
+    public void parseVarList() {
+        validateTokenType(new Token[]{ Token.IDENTIFIER });
+        lex.advance();
+
+        // Recursive call if more than one variable.
+        if(lex.getTokenType() == Token.SYMBOL && lex.getSymbol() == ',') {
+            lex.advance();
+            parseVarList();
+        }
     }
 
 
@@ -114,6 +127,7 @@ public class Parser {
         validateTokenType(new Token[]{ Token.KEYWORD, Token.IDENTIFIER });
 
         if(lex.getTokenType() == Token.KEYWORD) validateKeyWord(new Keyword[]{Keyword.INT, Keyword.CHAR, Keyword.BOOLEAN});
+        lex.advance();
     }
 
 
