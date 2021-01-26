@@ -28,6 +28,9 @@ public class Parser {
      * @throws ParsingFailure on failure.
      */
     public void parseClass() {
+        // Move to first token.
+        lex.advance();
+
         // Check first token is the keyword 'class'.
         ValidateType(Token.KEYWORD);
         ValidateKeyWord(Keyword.CLASS);
@@ -37,6 +40,13 @@ public class Parser {
         ValidateType(Token.IDENTIFIER);
         lex.advance();
 
+        // Parse 0 or more class variable declarations.
+        while(isClassVarDec()) {
+            parseClassVarDec();
+        }
+
+        //TODO: Parse 0 or more subroutine declarations...
+
         // Check for opening bracket
         ValidateType(Token.SYMBOL);
         ValidateSymbol('{');
@@ -45,7 +55,22 @@ public class Parser {
         // Check for closing bracket
         ValidateType(Token.SYMBOL);
         ValidateSymbol('}');
-        lex.advance();
+    }
+
+    /**
+     * Checks if the current token is the start of a class variable declaration.
+     * @return Returns true if the current token is the static or field keyword.
+     */
+    public boolean isClassVarDec() {
+        return lex.getTokenType() == Token.KEYWORD &&
+                (lex.getKeyword() == Keyword.STATIC || lex.getKeyword() == Keyword.FIELD);
+    }
+
+    /**
+     * Parse a class variable declaration.
+     * @throws ParsingFailure on failure.
+     */
+    public void parseClassVarDec() {
 
     }
     
