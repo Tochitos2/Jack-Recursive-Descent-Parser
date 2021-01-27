@@ -4,13 +4,11 @@ import tokenizer.Keyword;
 import tokenizer.Token;
 import tokenizer.Tokenizer;
 
-import java.security.Key;
-
 /**
  * Parse a Jack source file.
  * 
- * @author
- * @version 
+ * @author Tomas Angus De Haro, ta527
+ * @version 1.0
  */
 public class Parser {
     // The tokenizer.
@@ -128,6 +126,7 @@ public class Parser {
 
         // Check for opening parameters bracket.
         validateTokenType(new Token[]{ Token.IDENTIFIER });
+        lex.advance();
         validateTokenType(new Token[]{ Token.SYMBOL });
         validateSymbol(new char[]{ '(' });
         lex.advance();
@@ -137,7 +136,6 @@ public class Parser {
             parseParameterList();
         }
         // Check for closing parameters bracket.
-        validateTokenType(new Token[]{ Token.IDENTIFIER });
         validateTokenType(new Token[]{ Token.SYMBOL });
         validateSymbol(new char[]{ ')' });
         lex.advance();
@@ -170,13 +168,13 @@ public class Parser {
         validateSymbol(new char[]{ '{' });
         lex.advance();
 
-        //TODO:
+        // Parse 0-n local variable declarations.
         while(isVarDec()) {
             parseVarDec();
         }
 
-        //TODO:
-        while(isStatement) {
+        // Parse 0-n statements.
+        while(isStatement()) {
             parseStatement();
         }
 
@@ -220,26 +218,286 @@ public class Parser {
     private void parseStatement() {
         validateTokenType(new Token[] { Token.KEYWORD });
 
-        switch(lex.getKeyword()) {
-            case DO:
-                parseDoStatement();
-                break;
-            case IF:
-                parseIfStatement();
-                break;
-            case LET:
-                parseLetStatement();
-                break;
-            case RETURN:
-                parseReturnStatement();
-                break;
-            case WHILE:
-                parseWhileStatement();
-                break;
-            default:
-                throw new ParsingFailure();
+        switch (lex.getKeyword()) {
+            case DO -> parseDoStatement();
+            case IF -> parseIfStatement();
+            case LET -> parseLetStatement();
+            case RETURN -> parseReturnStatement();
+            case WHILE -> parseWhileStatement();
+            default -> throw new ParsingFailure();
+        }
+    }
+
+    private void parseDoStatement() {
+        validateTokenType(new Token[]{ Token.KEYWORD });
+        validateKeyWord(new Keyword[]{ Keyword.DO });
+        lex.advance();
+
+        parseSubroutineCall(Character.MIN_VALUE);
+
+        validateTokenType(new Token[]{ Token.SYMBOL });
+        validateSymbol(new char[] { ';' });
+        lex.advance();
+    }
+
+    private void parseIfStatement() {
+        validateTokenType(new Token[]{ Token.KEYWORD });
+        validateKeyWord(new Keyword[]{ Keyword.IF });
+        lex.advance();
+
+        validateTokenType(new Token[]{ Token.SYMBOL });
+        validateSymbol(new char[] { '(' });
+        lex.advance();
+
+        parseExpression();
+
+        validateTokenType(new Token[]{ Token.SYMBOL });
+        validateSymbol(new char[] { ')' });
+        lex.advance();
+
+        // Parse if statement block
+        parseBlock();
+
+        // parse optional else statement block
+        if(lex.getTokenType() == Token.KEYWORD && lex.getKeyword() == Keyword.ELSE) {
+            validateTokenType(new Token[]{ Token.KEYWORD });
+            validateKeyWord(new Keyword[]{ Keyword.ELSE });
+            lex.advance();
+
+            parseBlock();
+        }
+    }
+
+    private void parseLetStatement() {
+        validateTokenType(new Token[]{ Token.KEYWORD });
+        validateKeyWord(new Keyword[]{ Keyword.LET });
+        lex.advance();
+
+        validateTokenType(new Token[]{ Token.IDENTIFIER });
+        lex.advance();
+
+        // Parse optional identifier index.
+        if(lex.getTokenType() == Token.SYMBOL && lex.getSymbol() == '[') {
+            validateTokenType(new Token[]{ Token.SYMBOL });
+            validateSymbol(new char[] { '[' });
+            lex.advance();
+
+            parseExpression();
+
+            validateTokenType(new Token[]{ Token.SYMBOL });
+            validateSymbol(new char[] { ']' });
+            lex.advance();
+        }
+
+        // Assignment operator
+        validateTokenType(new Token[]{ Token.SYMBOL });
+        validateSymbol(new char[] { '=' });
+        lex.advance();
+
+        parseExpression();
+
+        validateTokenType(new Token[]{ Token.SYMBOL });
+        validateSymbol(new char[] { ';' });
+        lex.advance();
+    }
+
+    private void parseReturnStatement() {
+        validateTokenType(new Token[]{ Token.KEYWORD });
+        validateKeyWord(new Keyword[]{ Keyword.RETURN });
+        lex.advance();
+
+        // If rule termination is not found then expect an expression.
+        if(lex.getTokenType() != Token.SYMBOL || lex.getSymbol() != ';') {
+            parseExpression();
+        }
+
+        validateTokenType(new Token[]{ Token.SYMBOL });
+        validateSymbol(new char[] { ';' });
+        lex.advance();
+    }
+
+    private void parseWhileStatement() {
+        validateTokenType(new Token[]{ Token.KEYWORD });
+        validateKeyWord(new Keyword[]{ Keyword.WHILE });
+        lex.advance();
+
+        validateTokenType(new Token[]{ Token.SYMBOL });
+        validateSymbol(new char[] { '(' });
+        lex.advance();
+
+        parseExpression();
+
+        validateTokenType(new Token[]{ Token.SYMBOL });
+        validateSymbol(new char[] { ')' });
+        lex.advance();
+
+        // Parse if statement block
+        parseBlock();
+    }
+
+    private void parseSubroutineCall(char c) {
+        parseSubroutineReference(c);
+
+
+        // Opening subroutine parameter bracket
+        validateTokenType(new Token[]{ Token.SYMBOL });
+        validateSymbol(new char[] { '(' });
+        lex.advance();
+
+        if(lex.getTokenType() != Token.SYMBOL || lex.getSymbol() != ';') {
+            parseExpressionList();
+        }
+
+        // Closing subroutine parameter bracket
+        validateTokenType(new Token[]{ Token.SYMBOL });
+        validateSymbol(new char[] { ')' });
+        lex.advance();
+    }
+
+    private void parseExpressionList() {
+        parseExpression();
+
+        if(lex.getTokenType() == Token.SYMBOL && lex.getSymbol() == ',') {
+            lex.advance();
+            parseExpressionList();
+        }
+    }
+
+    private void parseSubroutineReference(char c) {
+        if(c != '.' && c!= '(') {
+            validateTokenType(new Token[]{ Token.IDENTIFIER });
+            lex.advance();
+
+            // Optional additional identifier
+            if(lex.getTokenType() == Token.SYMBOL && lex.getSymbol() == '.') {
+                validateTokenType(new Token[]{Token.SYMBOL});
+                validateSymbol(new char[]{'.'});
+                lex.advance();
+
+                validateTokenType(new Token[]{Token.IDENTIFIER});
+                lex.advance();
+            }
+        }
+        else if(c == '.') {
+            validateTokenType(new Token[]{Token.IDENTIFIER});
+            lex.advance();
+        }
+    }
+
+    private void parseBlock() {
+        validateTokenType(new Token[]{ Token.SYMBOL });
+        validateSymbol(new char[] { '{' });
+        lex.advance();
+
+        // Parse 0-n statements.
+        while(isStatement()) {
+            parseStatement();
+        }
+
+        validateTokenType(new Token[]{ Token.SYMBOL });
+        validateSymbol(new char[] { '}' });
+        lex.advance();
+    }
+
+    private void parseExpression() {
+        parseTerm();
+
+        if(isBinaryOp()) {
+            parseBinaryOp();
+
+            parseExpression();
+        }
+    }
+
+    private boolean isBinaryOp() {
+        if(lex.getTokenType() == Token.SYMBOL) {
+            return switch (lex.getSymbol()) {
+                case '+', '-', '*', '/', '&', '|', '<', '=', '>' -> true;
+                default -> false;
+            };
+        }
+        return false;
+    }
+
+    private void parseBinaryOp() {
+        validateTokenType(new Token[]{ Token.SYMBOL });
+        validateSymbol(new char[]{ '+', '-', '*', '/', '&', '|', '<', '=', '>' });
+        lex.advance();
+    }
+
+    private void parseTerm() {
+        if(lex.getTokenType() == Token.INT_CONST){ lex.advance(); return; }
+        if(lex.getTokenType() == Token.STRING_CONST){ lex.advance(); return; }
+        if(isUnaryOp()) {
+            parseUnaryOp();
+            parseTerm();
+            return;
+        }
+        if(isKeywordConstant()) {
+            parseKeywordConstant();
+            return;
+        }
+        if(lex.getTokenType() == Token.SYMBOL && lex.getSymbol() == '(') {
+            validateTokenType(new Token[]{ Token.SYMBOL });
+            validateSymbol(new char[] { '(' });
+            lex.advance();
+
+            parseExpression();
+
+            validateTokenType(new Token[]{ Token.SYMBOL });
+            validateSymbol(new char[] { ')' });
+            lex.advance();
+            return;
+        }
+        if(lex.getTokenType() == Token.IDENTIFIER) {
+            String identifier = lex.getIdentifier();
+            lex.advance();
+
+            // Check for optional IDENTIFIER ( '[' expression ']' ) ?
+            if(lex.getTokenType() == Token.SYMBOL && lex.getSymbol() == '[') {
+                validateTokenType(new Token[]{ Token.SYMBOL });
+                validateSymbol(new char[] { '[' });
+                lex.advance();
+
+                parseExpression();
+
+                validateTokenType(new Token[]{ Token.SYMBOL });
+                validateSymbol(new char[] { ']' });
+                lex.advance();
+                return;
+            }
+            // if the code is a subroutine call
+            if(lex.getTokenType() == Token.SYMBOL && (lex.getSymbol() == '.' || lex.getSymbol() == '(')) {
+                parseSubroutineCall(lex.getSymbol());
+            }
 
         }
+
+    }
+
+    private void parseKeywordConstant() {
+        validateTokenType(new Token[]{ Token.KEYWORD });
+        validateKeyWord(new Keyword[]{ Keyword.TRUE, Keyword.FALSE, Keyword.NULL, Keyword.THIS });
+        lex.advance();
+    }
+
+    private boolean isKeywordConstant() {
+        return lex.getTokenType() == Token.KEYWORD &&
+                (lex.getKeyword() == Keyword.TRUE ||
+                        lex.getKeyword() == Keyword.FALSE ||
+                        lex.getKeyword() == Keyword.NULL ||
+                        lex.getKeyword() == Keyword.THIS );
+    }
+
+    private void parseUnaryOp() {
+        validateTokenType(new Token[]{ Token.SYMBOL });
+        validateSymbol(new char[] { '-', '~' });
+        lex.advance();
+    }
+
+    private boolean isUnaryOp() {
+        return lex.getTokenType() == Token.SYMBOL &&
+                (lex.getSymbol() == '-' || lex.getSymbol() == '~');
     }
 
     /**
