@@ -1,0 +1,8 @@
+class ComplexWithoutTypeCheck
+{
+    method int m(boolean b, int y, Array a, char c)
+    {
+        do Output.printString("Hello World");
+        return  y[3] - c;
+    }
+}
