@@ -379,6 +379,7 @@ public class Parser {
             }
         }
         else if(c == '.') {
+            lex.advance();
             validateTokenType(new Token[]{Token.IDENTIFIER});
             lex.advance();
         }
