@@ -1,8 +1,11 @@
 package assign4;
 
+import assign4.SymbolTable.Kind;
 import tokenizer.Keyword;
 import tokenizer.Token;
 import tokenizer.Tokenizer;
+
+import java.util.ArrayList;
 
 /**
  * Parse a Jack source file.
@@ -13,6 +16,7 @@ import tokenizer.Tokenizer;
 public class Parser {
     // The tokenizer.
     private final Tokenizer lex;
+    private final SymbolTable symbolTable;
     
     /**
      * Parse a Jack source file.
@@ -21,6 +25,7 @@ public class Parser {
     public Parser(Tokenizer lex)
     {
         this.lex = lex;
+        this.symbolTable = new SymbolTable();
     }
     
     /**
@@ -76,13 +81,21 @@ public class Parser {
     private void parseClassVarDec() {
         validateTokenType(new Token[]{ Token.KEYWORD });
         validateKeyWord(new Keyword[]{ Keyword.FIELD, Keyword.STATIC });
+        // Get kind to store
+        SymbolTable.Kind kind = lex.getKeyword() == Keyword.FIELD ? SymbolTable.Kind.FIELD : SymbolTable.Kind.STATIC;
         lex.advance();
 
-        // Parse data type.
-        parseType();
+        // Parse data type and store for definition in symbol table.
+        String type = parseType();
 
-        // parse variable declaration list.
-        parseVarList();
+
+        // parse variable declaration list and store identifiers.
+        ArrayList<String> identifiers = parseVarList();
+
+        //Store the class variables.
+        for (String identifier : identifiers) {
+            symbolTable.define(identifier, type, kind);
+        }
 
         // Parse ending semicolon.
         validateTokenType(new Token[]{ Token.SYMBOL });
@@ -94,15 +107,20 @@ public class Parser {
     /**
      * varList ::= IDENTIFIER ( ',' varList ) ?
      */
-    private void parseVarList() {
+    private ArrayList<String> parseVarList() {
         validateTokenType(new Token[]{ Token.IDENTIFIER });
+        // Store identity name.
+        ArrayList<String> varNames = new ArrayList<>();
+        varNames.add(lex.getIdentifier());
         lex.advance();
 
         // Recursive call if more than one variable.
         if(lex.getTokenType() == Token.SYMBOL && lex.getSymbol() == ',') {
             lex.advance();
-            parseVarList();
+            // Add all further identifiers to list
+            varNames.addAll(parseVarList());
         }
+        return varNames;
     }
 
 
@@ -119,6 +137,8 @@ public class Parser {
      */
     private void parseSubroutineDec() {
         parseRoutineKind();
+        // Start new subroutine local scope.
+        symbolTable.startSubroutine();
 
         // if type void advance, else parse as type.
         if(lex.getTokenType() == Token.KEYWORD && lex.getKeyword() == Keyword.VOID) lex.advance();
@@ -131,9 +151,10 @@ public class Parser {
         validateSymbol(new char[]{ '(' });
         lex.advance();
 
-        // If not a symbol atom then must be parameters, so parse them.
+        // If not a symbol atom then must be parameters, so parse and store them in the symbol table.
         if(lex.getTokenType() != Token.SYMBOL) {
-            parseParameterList();
+            ArrayList<Identity> parameters = parseParameterList();
+            parameters.forEach((identity -> symbolTable.define(identity.name, identity.type, identity.kind)));
         }
         // Check for closing parameters bracket.
         validateTokenType(new Token[]{ Token.SYMBOL });
@@ -149,17 +170,23 @@ public class Parser {
         lex.advance();
     }
 
-    private void parseParameterList() {
+    private ArrayList<Identity> parseParameterList() {
         // parse first of 1-n parameters.
-        parseType();
+        String type = parseType();
         validateTokenType(new Token[]{ Token.IDENTIFIER });
+        String identifier = lex.getIdentifier();
         lex.advance();
+
+        //store first parameter.
+        ArrayList<Identity> parameters = new ArrayList<>();
+        parameters.add(new Identity(identifier, type, SymbolTable.Kind.ARG));
 
         // if there are more parameters remaining then recursively call method.
         if(lex.getTokenType() == Token.SYMBOL && lex.getSymbol() == ',') {
             lex.advance();
-            parseParameterList();
+            parameters.addAll(parseParameterList());
         }
+        return parameters;
     }
 
     private void parseSubroutineBody() {
@@ -194,11 +221,14 @@ public class Parser {
         validateKeyWord(new Keyword[]{ Keyword.VAR });
         lex.advance();
 
-        // Check for type declaration.
-        parseType();
+        // Check for and store type.
+        String type = parseType();
 
-        // Check for list of identifiers.
-        parseVarList();
+        // Check for and store list of identifiers.
+        ArrayList<String> identifiers = parseVarList();
+
+        // Store variables in symbol table.
+        identifiers.forEach(identity -> symbolTable.define(identity, type, Kind.VAR));
 
         // Check for closing semicolon.
         validateTokenType(new Token[]{ Token.SYMBOL });
@@ -274,6 +304,8 @@ public class Parser {
         lex.advance();
 
         validateTokenType(new Token[]{ Token.IDENTIFIER });
+        //Check variable has been declared.
+        if(!symbolTable.isDefined(lex.getIdentifier())) throw new ParsingFailure();
         lex.advance();
 
         // Parse optional identifier index.
@@ -452,10 +484,17 @@ public class Parser {
         }
         if(lex.getTokenType() == Token.IDENTIFIER) {
             String identifier = lex.getIdentifier();
+            //Check variable has been declared.
+            if(!symbolTable.isDefined(identifier)) throw new ParsingFailure();
             lex.advance();
 
             // Check for optional IDENTIFIER ( '[' expression ']' ) ?
             if(lex.getTokenType() == Token.SYMBOL && lex.getSymbol() == '[') {
+
+                //Check variable is of type array.
+                if(symbolTable.typeOf(identifier) != "Array") throw new ParsingFailure();
+
+                // Parse index
                 validateTokenType(new Token[]{ Token.SYMBOL });
                 validateSymbol(new char[] { '[' });
                 lex.advance();
@@ -513,11 +552,13 @@ public class Parser {
     /**
      *  A type must be either a keyword (int, char, boolean) or and identifier.
      */
-    private void parseType() {
+    private String parseType() {
         validateTokenType(new Token[]{ Token.KEYWORD, Token.IDENTIFIER });
 
         if(lex.getTokenType() == Token.KEYWORD) validateKeyWord(new Keyword[]{Keyword.INT, Keyword.CHAR, Keyword.BOOLEAN});
+        String type=  lex.getTokenType() == Token.IDENTIFIER ? lex.getIdentifier() : lex.getKeyword().toString();
         lex.advance();
+        return type;
     }
 
 
