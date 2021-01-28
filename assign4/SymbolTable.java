@@ -31,7 +31,7 @@ public class SymbolTable {
         Identity identity = new Identity(name, type, kind);
 
         switch(kind) {
-            case STATIC, FIELD -> classScope.put(name, identity);
+            case STATIC, FIELD, CLASS, FUNC -> classScope.put(name, identity);
             case ARG, VAR -> localScope.put(name, identity);
         }
     }
@@ -58,6 +58,6 @@ public class SymbolTable {
 
 
     public enum Kind {
-        STATIC, FIELD, ARG, VAR,
+        STATIC, FIELD, ARG, VAR, CLASS, FUNC
     }
 }

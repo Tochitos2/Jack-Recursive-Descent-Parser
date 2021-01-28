@@ -43,6 +43,8 @@ public class Parser {
 
         // Check for class identifier.
         validateTokenType(new Token[]{ Token.IDENTIFIER });
+        //Store class name in symbol table.
+        symbolTable.define(lex.getIdentifier(), "", Kind.CLASS);
         lex.advance();
 
         // Check for opening bracket
@@ -140,13 +142,20 @@ public class Parser {
         // Start new subroutine local scope.
         symbolTable.startSubroutine();
 
+        String type;
         // if type void advance, else parse as type.
-        if(lex.getTokenType() == Token.KEYWORD && lex.getKeyword() == Keyword.VOID) lex.advance();
-        else parseType();
+        if(lex.getTokenType() == Token.KEYWORD && lex.getKeyword() == Keyword.VOID) {
+            type = "void";
+            lex.advance();
+        }
+        else type = parseType();
 
-        // Check for opening parameters bracket.
+
         validateTokenType(new Token[]{ Token.IDENTIFIER });
+        // Store function name in symbol table.
+        symbolTable.define(lex.getIdentifier(), type, Kind.FUNC);
         lex.advance();
+        // Check for opening parameters bracket.
         validateTokenType(new Token[]{ Token.SYMBOL });
         validateSymbol(new char[]{ '(' });
         lex.advance();
