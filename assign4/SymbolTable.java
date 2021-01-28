@@ -45,26 +45,19 @@ public class SymbolTable {
         return classScope.containsKey(name) || localScope.containsKey(name);
     }
 
-    public Kind kindOf(String name, Scope scope) {
-        switch(scope) {
-            case CLASS -> { return classScope.get(name).kind; }
-            default -> { return localScope.get(name).kind; }
-        }
+    public Kind kindOf(String name) {
+        if(classScope.get(name).kind != null) return classScope.get(name).kind;
+        return localScope.get(name).kind;
     }
 
-    public String typeOf(String name, Scope scope) {
-        switch(scope) {
-            case CLASS -> { return classScope.get(name).type; }
-            default -> { return localScope.get(name).type; }
-        }
+    public String typeOf(String name) {
+        if(classScope.get(name).type != null) return classScope.get(name).type;
+        return localScope.get(name).type;
+
     }
 
 
     public enum Kind {
         STATIC, FIELD, ARG, VAR,
-    }
-
-    public enum Scope {
-        CLASS, LOCAL,
     }
 }
