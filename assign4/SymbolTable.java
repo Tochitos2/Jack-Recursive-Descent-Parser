@@ -37,16 +37,12 @@ public class SymbolTable {
     }
 
     /**
-     * Returns whether variable of a given name is defined in the chosen scope.
+     * Returns whether variable of a given name is defined in the current scope.
      * @param name
-     * @param scope
      * @return
      */
-    public boolean isDefined(String name, Scope scope) {
-        switch(scope) {
-            case CLASS -> { return classScope.containsKey(name); }
-            default -> { return localScope.containsKey(name); }
-        }
+    public boolean isDefined(String name) {
+        return classScope.containsKey(name) || localScope.containsKey(name);
     }
 
     public Kind kindOf(String name, Scope scope) {
