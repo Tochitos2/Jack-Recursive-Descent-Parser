@@ -305,11 +305,15 @@ public class Parser {
 
         validateTokenType(new Token[]{ Token.IDENTIFIER });
         //Check variable has been declared.
-        if(!symbolTable.isDefined(lex.getIdentifier())) throw new ParsingFailure();
+        String identifier = lex.getIdentifier();
+        if(!symbolTable.isDefined(identifier)) throw new ParsingFailure();
         lex.advance();
 
         // Parse optional identifier index.
         if(lex.getTokenType() == Token.SYMBOL && lex.getSymbol() == '[') {
+            //Check variable is of type array.
+            if(symbolTable.typeOf(identifier) != "Array") throw new ParsingFailure();
+
             validateTokenType(new Token[]{ Token.SYMBOL });
             validateSymbol(new char[] { '[' });
             lex.advance();
