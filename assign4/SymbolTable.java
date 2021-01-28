@@ -71,17 +71,4 @@ public class SymbolTable {
     public enum Scope {
         CLASS, LOCAL,
     }
-
-    class Identity {
-        public String name;
-        public String type;
-        public Kind kind;
-
-        public Identity(String name, String type, Kind kind) {
-            this.name = name;
-            this.type = type;
-            this.kind = kind;
-        }
-    }
-
 }
